@@ -44,7 +44,7 @@ Follow the instructions here to create an Amazon Alexa Smart Home Skill: [https:
 
 Follow the instructions here to create a Lambda Function: [https://www.home-assistant.io/integrations/alexa.smart_home/#create-an-aws-lambda-function]
 
-However use the following code for your lambda function: TODO link
+However use the following code for your lambda function: [./alexa_lambda.py]
 
 Then under environment use the following:
 
