@@ -1,0 +1,49 @@
+name: "Alexa Generic RTSP Doorbell"
+description: "This add on allows you to use an RTSP camera as a video doorbell. You will also require something that is turned on when the doorbell is pressed."
+version: "0.0.8"
+slug: "alexa_generic_rtsp_doorbell"
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: before
+homeassistant_api: true
+ports:
+  5000/tcp: 5000  
+options:
+  log_level: "INFO"
+  rtsp_to_webrtc_url: http://3d360630-rtsp-to-web:8083
+  # Pick your nearest from: https://developer.amazon.com/docs/login-with-amazon/authorization-code-grant.html#access-token-request
+  oauth_token_url: "https://api.amazon.co.uk/auth/o2/token"
+  # Pick your nearest from: https://developer.amazon.com/en-US/docs/alexa/smarthome/send-events-to-the-alexa-event-gateway.html#endpoints
+  alexa_event_gateway_url: "https://api.eu.amazonalexa.com/v3/events"
+  # Found in the Alexa Skill Developer console under premissions - Alexa Skill Messaging.
+  alexa_client_id: null
+  # Found in the Alexa Skill Developer console under premissions - Alexa Skill Messaging.
+  alexa_client_secret: null
+  api_password: null
+  doorbells:
+    - alexa_friendly_name: null
+      alexa_endpoint: null
+      doorbell_sensor: null
+      motion_sensor: null
+      rtsp_to_webrtc_stream_id: null
+      rtsp_to_webrtc_channel_id: "0"
+schema:
+  log_level: list(ERROR|INFO|DEBUG)
+  oauth_token_url: url
+  alexa_event_gateway_url: url
+  alexa_client_id: str
+  alexa_client_secret: password
+  api_password: password
+  token: str?
+  rtsp_to_webrtc_url: url
+  doorbells:
+    - alexa_friendly_name: str
+      alexa_endpoint: str
+      doorbell_sensor: str?
+      motion_sensor: str?
+      rtsp_to_webrtc_stream_id: str
+      rtsp_to_webrtc_channel_id: str

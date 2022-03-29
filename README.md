@@ -19,4 +19,8 @@ https://github.com/foxy82/ha-addons
 
     Sets up an SSL proxy with NGINX and redirects traffic from port 80 to 443. Forked from the official repo with additional configuration options.
 
+- **[Alexa Generic RTSP Doorbell](/alexa_rtsp_doorbell/README.md)**
+
+    Set up a Generic RTSP Camera and a binary sensor to get video notifications to Amazon devices that support live view. Eg. Echo Show.
+
 
