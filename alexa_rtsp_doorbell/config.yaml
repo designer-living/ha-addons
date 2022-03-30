@@ -47,5 +47,4 @@ schema:
       motion_sensor: str?
       rtsp_to_webrtc_stream_id: str
       rtsp_to_webrtc_channel_id: str
-# TODO look at publishing
-# image: "ghcr.io/home-assistant/{arch}-alexa_rtsp_doorbell"
+image: "foxy82/alexa_rtsp_doorbell"
