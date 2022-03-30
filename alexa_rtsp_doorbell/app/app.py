@@ -5,8 +5,7 @@ import alexa_smart_home_skill as alexa_smart_home_skill
 import os
 import json
 
-
-from homeassistant_ws import HomeAssistantClient
+from homeassistant_ws import HomeAssistantReconnectingClient
 
 OPTIONS_FILENAME = '/data/options.json'
 ROUTE_PREFIX = '/api/alexa_rtsp_doorbell'
@@ -44,23 +43,21 @@ token = os.environ.get('SUPERVISOR_TOKEN')
 #HOME_ASSISTANT_WS_API_URL = "ws://192.168.0.1:8123/api/websocket"
 #token = options.get('token')
 
-homeassistant_ws_client = HomeAssistantClient(HOME_ASSISTANT_WS_API_URL)
-homeassistant_ws_client.set_token(token)
+homeassistant_ws_client = HomeAssistantReconnectingClient(HOME_ASSISTANT_WS_API_URL, token)
 homeassistant_ws_client.connect()
 
 alexa_skill = alexa_smart_home_skill.AlexaSkill(options, homeassistant_ws_client)
 
 @app.route(ROUTE_PREFIX + "/", methods=['POST'])
 def invoke_skill():
+    logger.info("Received Alexa request")
     auth_check = do_auth_check(request)
     if auth_check:
         return auth_check
     # callback function for api requests
-    logger.debug(request)
     request2 = request.get_json()
-    logger.info(request2)
+    logger.debug(request2)
     init_namespace = request2['directive']['header']['namespace']
-    logger.info(init_namespace)
     if init_namespace == 'Alexa.Discovery':
         return alexa_skill.handle_discovery(request2)
     elif init_namespace == 'Alexa.Authorization':
@@ -76,8 +73,20 @@ def invoke_skill():
 
 # Can be used by a REST API to fire the announcment if needed.
 # Doorbell ID is the alexa_endpoint
+@app.route(ROUTE_PREFIX + "/doorbell/<doorbell_id>", methods=['GET'])
+def do_doorbell(doorbell_id):
+    logger.info("Received Doorbell request")
+    auth_check = do_auth_check(request)
+    if auth_check:
+        return auth_check
+    return alexa_skill.do_doorbell(doorbell_id)
+
+
+# Can be used by a REST API to fire the announcment if needed.
+# Doorbell ID is the alexa_endpoint
 @app.route(ROUTE_PREFIX + "/motion/<doorbell_id>/detected", methods=['GET'])
 def do_motion_detected(doorbell_id):
+    logger.info("Received Motion Detected request")
     auth_check = do_auth_check(request)
     if auth_check:
         return auth_check
@@ -88,6 +97,7 @@ def do_motion_detected(doorbell_id):
 # Doorbell ID is the alexa_endpoint
 @app.route(ROUTE_PREFIX + "/motion/<doorbell_id>/not_detected", methods=['GET'])
 def do_motion_not_detected(doorbell_id):
+    logger.info("Received Motion not Detected request")
     auth_check = do_auth_check(request)
     if auth_check:
         return auth_check    

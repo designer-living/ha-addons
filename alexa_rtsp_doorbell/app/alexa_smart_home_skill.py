@@ -1,7 +1,10 @@
 import datetime
+import math
 from uuid import uuid4
 import requests
 import datetime
+import threading
+import time
 import json
 import os
 import logging
@@ -20,6 +23,7 @@ class AlexaSkill():
         self.rtsp_to_webrtc_url = options.get('rtsp_to_webrtc_url')
         self._client_secret = options.get('alexa_client_secret')
         self._json_credentials_file_name = '/data/token.json'
+        self._token_refresh_thread = None
 
         self.ha_entity_id_to_doorbell_id = {}
         self._doorbells = {}
@@ -124,10 +128,9 @@ class AlexaSkill():
       self.logger.info("Requesting access token")
       self._do_token_request(code=code)
 
-    # kwargs is required for the AppDaemon scheduler
-    def do_refresh_token_request(self, kwargs={}):
+    def do_refresh_token_request(self, refresh_token):
       self.logger.info("Refreshing access token")
-      self._do_token_request(refresh_token=self._json_credentials['refresh_token'])
+      self._do_token_request(refresh_token=refresh_token)
 
     def _do_token_request(self, code=None, refresh_token=None):
       headers = {
@@ -170,25 +173,61 @@ class AlexaSkill():
         with open(self._json_credentials_file_name, 'w') as outfile:
           json.dump(json_credentials, outfile)
       else:
-        self.logger.info(json_credentials['expires_at'])
         expires_datetime = datetime.datetime.fromisoformat(json_credentials['expires_at'])
 
       if datetime.datetime.now() > expires_datetime:
         # Immediate refresh - this will come back through this method
         self.logger.info("Token is old doing an immediate refresh")
         # Need to set the credentials before refresh as we need the refresh token
-        self._json_credentials = json_credentials
-        self.do_refresh_token_request({})
+        # self._json_credentials = json_credentials
+        self.do_refresh_token_request(json_credentials.get('refresh_token', None))
         return
       else:
         # Schedule Refresh
         self.logger.info("Scheduling refresh")
+        self._token_refresh_thread = threading.Thread(target=self.refresh_token_loop, daemon=True)
+        self._token_refresh_thread.start()
         #self.run_in(self.do_refresh_token_request, json_credentials['expires_in'] - 60)
 
 
-      self.logger.info("Updated TOKEN")
+      self.logger.info("Updated Alexa Auth token")
       self._json_credentials = json_credentials
-      self.logger.info(self._json_credentials)
+      self.logger.debug(self._json_credentials)
+
+    def refresh_token_loop(self):
+      self.logger.info("Token refresh thread starting")
+      not_refreshed = True
+      while(not_refreshed):
+        # Get the expires at date time and remove 5 mins so we renew before expiry.
+        expires_at = self._json_credentials.get('expires_at', None)
+        if not expires_at:
+          self.logger.debug(f"Expires at not set yet wait for 10 seconds: {self._json_credentials}")
+          time.sleep(10)
+        else:
+          expires_datetime = datetime.datetime.fromisoformat(self._json_credentials['expires_at']) - datetime.timedelta(minutes=5)
+          now = datetime.datetime.now()
+          self.logger.debug(f"Refresh time: {expires_datetime}, time now {now}")
+          # If expired or about to - renew it.
+          if now > expires_datetime:
+            self.logger.info("Alexa Token is expired - refresh now")
+            self.not_refreshed = False
+            self.do_refresh_token_request(self._json_credentials['refresh_token'])
+          else:
+            # Else sleep for half the time until refresh (unless it is less than 10 seconds)
+            sleep_time = math.floor( (expires_datetime - now).total_seconds() / 2)
+            # If we are close now - renew anyway.
+            if sleep_time < 10:
+              self.logger.info("Alexa Token is close to expired - refresh now")
+              self.not_refreshed = False
+              self.do_refresh_token_request(self._json_credentials['refresh_token'])
+            else:
+              self.logger.debug(f"Token isn't expiring sleep for {sleep_time}")
+              time.sleep(sleep_time)
+      self.logger.info("Token refresh thread exiting")
+
+
+
+
 
     def handle_discovery(self, request):
 
@@ -266,7 +305,7 @@ class AlexaSkill():
           error_code = response.json().get('payload', {}).get('code', '')
           if error_code  == 'INVALID_ACCESS_TOKEN_EXCEPTION':
             # Try our best to recover by trying to refresh the token
-            self.do_refresh_token_request()
+            self.do_refresh_token_request(self._json_credentials['refresh_token'])
             # For now we just retry once.
             if retry == 0:
               self.do_doorbell(doorbell_id, retry=(retry+1))
