@@ -47,4 +47,4 @@ schema:
       motion_sensor: str?
       rtsp_to_webrtc_stream_id: str
       rtsp_to_webrtc_channel_id: str
-image: "foxy82/alexa_rtsp_doorbell-{ARCH}-addon"
+image: "foxy82/alexa_rtsp_doorbell-{arch}-addon"
