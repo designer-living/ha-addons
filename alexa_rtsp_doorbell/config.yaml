@@ -1,6 +1,6 @@
 name: "Alexa Generic RTSP Doorbell"
 description: "This add on allows you to use an RTSP camera as a video doorbell. You will also require something that is turned on when the doorbell is pressed."
-version: "0.1.8"
+version: "0.1.9"
 slug: "alexa_generic_rtsp_doorbell"
 arch:
   - aarch64
@@ -47,4 +47,5 @@ schema:
       motion_sensor: str?
       rtsp_to_webrtc_stream_id: str
       rtsp_to_webrtc_channel_id: str
+      reset_doorbell: bool?
 image: "foxy82/alexa_rtsp_doorbell-{arch}-addon"

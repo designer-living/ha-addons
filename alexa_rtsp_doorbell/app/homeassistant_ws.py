@@ -67,7 +67,38 @@ class HomeAssistantClient(WebSocketClient):
 
         self._entity_id_to_trigger[entity_id] = Subscription(entity_id, callback, from_state, to_state)
 
+    def turn_off_light(self, entity_id):
+        return self.call_service(
+            domain="light",
+            service="turn_off",
+            entity_id=entity_id
+        )
 
+    def turn_off(self, entity_id):
+        '''
+        Attempts to turn off a device by guessing the domain from the entity id name
+        '''
+        self.logger.info(f"Turning off {entity_id}")
+        split_entity_id = entity_id.split(".")
+        if len(split_entity_id) != 2:
+            self.logger.error(f"Couldn't get domain from entity_id - is the entity_id correct? {entity_id}")
+        else:
+            self.call_service(split_entity_id[0], "turn_off", entity_id=entity_id)
+
+    def call_service(self, domain, service, entity_id=None, service_data=None):
+
+        payload = {
+            "type": "call_service",
+            "domain": domain,
+            "service": service,
+        }
+        if service_data:
+            payload["service_data"] = service_data
+        if entity_id:
+            payload["target"] = {
+                "entity_id": entity_id
+            }
+        return self._send_with_id(payload, "call_service")
 
 
     def received_message(self, m):
@@ -211,6 +242,19 @@ class HomeAssistantReconnectingClient():
 
         if self.ws.authenticated:
             self.ws.subscribe_to_trigger(entity_id, callback, from_state, to_state)
+
+    def turn_off(self, entity_id):
+        if self.ws.authenticated:
+            self.ws.turn_off(entity_id)
+        else:
+            self.logger.warning(f"Can't turn off {entity_id} as we aren't connected to home assistant")
+
+    def call_service(self, domain, service, entity_id=None, service_data=None):
+        if self.ws.authenticated:
+            self.ws.subscribe_to_trigger(domain, service, entity_id, service_data)
+        else:
+            self.logger.warning(f"Can't call {domain}.{service} as we aren't connected to home assistant")
+
 
 
     def authenticated(self, auth_success):

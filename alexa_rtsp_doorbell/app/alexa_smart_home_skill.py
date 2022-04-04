@@ -8,7 +8,7 @@ import time
 import json
 import os
 import logging
-from homeassistant_ws import HomeAssistantClient
+from homeassistant_ws import HomeAssistantReconnectingClient
 from rtsp_to_webrtc_doorbell import Doorbell
 
 class AlexaSkill():
@@ -16,7 +16,7 @@ class AlexaSkill():
     def __init__(self, options, homeassistant_ws_client):
         
         self.logger = logging.getLogger(__name__)
-        self.homeassistant_ws_client: HomeAssistantClient = homeassistant_ws_client
+        self.homeassistant_ws_client: HomeAssistantReconnectingClient = homeassistant_ws_client
         self.alexa_event_gateway_url = options.get('alexa_event_gateway_url')
         self._oauth_url = options.get('oauth_token_url')
         self._client_id = options.get('alexa_client_id')
@@ -73,6 +73,15 @@ class AlexaSkill():
       if from_state == "off" and to_state == "on":
         doorbell_id = self.ha_entity_id_to_doorbell_id.get(entity_id)
         self.do_doorbell(doorbell_id)
+        doorbell = self._doorbells.get(doorbell_id)
+        self.logger.debug(f"Doorbell {doorbell}, reset: {doorbell.reset_doorbell}")
+        if doorbell and doorbell.reset_doorbell:
+          self.logger.debug(f"Resetting doorbell {entity_id}")
+          self.homeassistant_ws_client.turn_off(entity_id)
+        else:
+          self.logger.debug(f"Not resetting doorbell {entity_id}")
+
+
 
     def do_motion_from_ha(self, entity_id, message):
       # TODO Amazon docs say there need to be at least 30 seconds between events.

@@ -8,13 +8,13 @@ class Doorbell():
 
     def __init__(self, options, rtsp_to_webrtc_url):
         self.logger = logging.getLogger(__name__)
-
         self.alexa_friendly_name = options['alexa_friendly_name']
         self.alexa_endpoint = options['alexa_endpoint']
         self.doorbell_sensor = options.get('doorbell_sensor', None)
         self.motion_sensor = options.get('motion_sensor', None)
         self.rtsp_to_webrtc_stream_id = options['rtsp_to_webrtc_stream_id']
         self.rtsp_to_webrtc_channel_id = options['rtsp_to_webrtc_channel_id']
+        self.reset_doorbell = options.get('reset_doorbell', False)
         self._rtsptowebrtc_url = rtsp_to_webrtc_url
 
 
@@ -35,38 +35,42 @@ class Doorbell():
             'data': base_64_encoded_offer
         }
         response = requests.post(url, headers=headers, data=data)
+        if not response.ok:
+          self.logger.error(f"Error getting answer: {response.content}")
+          return {}, 500
+        else:
 
-        answer = base64.b64decode(response.content).decode('utf-8')
-        # Doesn't seem to make a different so removing for now
-        # Amazon docs suggest setting this if no audio.
-        # answer = answer.replace('a=sendrecv', 'a=sendonly')
-        self.logger.info(f"SDP ANSWER:\n{answer}")
+          answer = base64.b64decode(response.content).decode('utf-8')
+          # Doesn't seem to make a different so removing for now
+          # Amazon docs suggest setting this if no audio.
+          # answer = answer.replace('a=sendrecv', 'a=sendonly')
+          self.logger.info(f"SDP ANSWER:\n{answer}")
 
-        payload = {
-        "event": {
-            "header": {
-            "namespace": "Alexa.RTCSessionController",
-            "name": "AnswerGeneratedForSession",
-            "messageId": str(uuid4()),
-            "correlationToken": request['directive']['header']['correlationToken'],
-            "payloadVersion": "3"
-            },
-            "endpoint": {
-            "scope": {
-                "type": "BearerToken",
-                "token":  request['directive']['endpoint']['scope']['token']
-            },
-            "endpointId": request['directive']['endpoint']['endpointId']
-            },
-            "payload": {
-            "answer": {
-                "format" : "SDP",
-                "value" : answer
-            }
-            }
-        }
-        }
-        return payload
+          payload = {
+          "event": {
+              "header": {
+              "namespace": "Alexa.RTCSessionController",
+              "name": "AnswerGeneratedForSession",
+              "messageId": str(uuid4()),
+              "correlationToken": request['directive']['header']['correlationToken'],
+              "payloadVersion": "3"
+              },
+              "endpoint": {
+              "scope": {
+                  "type": "BearerToken",
+                  "token":  request['directive']['endpoint']['scope']['token']
+              },
+              "endpointId": request['directive']['endpoint']['endpointId']
+              },
+              "payload": {
+              "answer": {
+                  "format" : "SDP",
+                  "value" : answer
+              }
+              }
+          }
+          }
+          return payload
 
     def session_connected(self, request):
         payload = {
